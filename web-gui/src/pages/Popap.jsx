@@ -11,9 +11,9 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-export default function SendPopap({ open, setOpen, onSend }) {
+export default function SendPopap({ open, setOpen, onSend, test=false }) {
   const navigate = useNavigate();
-  const [n, setN] = useState(0);
+  const [n, setN] = useState(1);
   const [url, setUrl] = useState('');
 
   const handleCreate = () => {
@@ -30,6 +30,7 @@ export default function SendPopap({ open, setOpen, onSend }) {
             fullWidth
             label="введите N"
             value={n}
+            disabled={test}
             onChange={(e) => setN(e.target.value)}
             sx={{ mb: 2 }}
           />

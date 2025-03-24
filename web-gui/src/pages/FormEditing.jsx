@@ -17,9 +17,20 @@ import {
   CardContent,
   Typography
 } from '@mui/material';
-import { Add, Delete, ContentCopy, Save, Home, Send } from '@mui/icons-material';
+import { 
+  Add, 
+  Delete, 
+  ContentCopy, 
+  Save, 
+  Home, 
+  Send, 
+  RadioButtonUnchecked,
+  CheckBoxOutlineBlank,
+  ArrowDropDown
+} from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from "react-router-dom";
+import { v4 as uuidv4 } from 'uuid';
 import SendPopap from './Popap';
 
 export default function FormEditor() {
@@ -28,8 +39,27 @@ export default function FormEditor() {
   const [formData, setFormData] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedType, setSelectedType] = useState('radio');
-
   const [isPopapOpen, setPopapOpen] = useState(false);
+  const [testPopapOpen, setTestPopapOpen] = useState(false);
+
+  const questionTypes = [
+    { label: 'Один вариант', value: 'radio' },
+    { label: 'Несколько вариантов', value: 'checkbox' },
+    { label: 'Выпадающий список', value: 'select' },
+  ];
+
+  useEffect(() => {
+    const loadForm = () => {
+      const storedForm = localStorage.getItem(`form_${form_id}`);
+      if (!storedForm) {
+        toast.error('Форма не найдена');
+        return;
+      }
+      setFormData(JSON.parse(storedForm));
+    };
+
+    loadForm();
+  }, [form_id]);
 
   const sendForSolution = (form_url, N) => {
     fetch('/api/prod', {
@@ -51,49 +81,37 @@ export default function FormEditor() {
     })
   }
 
-  const sendTryTest = () => {
+  const sendTryTest = (form_url) => {
     fetch('/api/test', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(formData)
+      body: JSON.stringify({
+        ...formData,
+        form_url
+      })
     })
       .then(response => response.json())
       .then(data => {
         toast.success('Тест отправлен');
         console.log(data);
       })
-s      .catch(error => {
+      .catch(error => {
         toast.error('Произошла ошибка при отправке теста');
       })
   }
 
-  const questionTypes = [
-    { label: 'Один вариант', value: 'radio' },
-    { label: 'Несколько вариантов', value: 'checkbox' },
-    { label: 'Выпадающий список', value: 'select' },
-  ];
-
-  useEffect(() => {
-    const loadForm = () => {
-      const storedForm = localStorage.getItem(`form_${form_id}`);
-      if (!storedForm) {
-        toast.error('Форма не найдена');
-        return;
-      }
-      setFormData(JSON.parse(storedForm));
-    };
-
-    loadForm();
-  }, [form_id]);
-
   const addQuestion = () => {
     const newQuestion = {
-      id: Date.now(),
+      id: uuidv4(),
       type: selectedType,
       question: '',
-      options: [{ id: Date.now() + 1, text: '', chance: 0.5 }]
+      options: [{ 
+        id: uuidv4(), 
+        text: '', 
+        chance: 0.5 
+      }]
     };
     
     setFormData(prev => ({
@@ -137,9 +155,9 @@ s      .catch(error => {
           return {
             ...q,
             options: [...q.options, { 
-              id: Date.now(), 
+              id: uuidv4(),
               text: '',
-              chance: Math.min(...q.options.map(o => o.chance)) - 0.1 
+              chance: 0.5
             }]
           };
         }
@@ -165,9 +183,17 @@ s      .catch(error => {
 
   const duplicateQuestion = (questionId) => {
     const question = formData.questions.find(q => q.id === questionId);
+    const newQuestion = {
+      ...question,
+      id: uuidv4(),
+      options: question.options.map(opt => ({
+        ...opt,
+        id: uuidv4()
+      }))
+    };
     setFormData(prev => ({
       ...prev,
-      questions: [...prev.questions, { ...question, id: Date.now() }]
+      questions: [...prev.questions, newQuestion]
     }));
   };
 
@@ -203,6 +229,7 @@ s      .catch(error => {
   return (
     <>
       <SendPopap open={isPopapOpen} setOpen={setPopapOpen} onSend={sendForSolution} />
+      <SendPopap open={testPopapOpen} setOpen={setTestPopapOpen} onSend={sendTryTest} test={true}/>
       <Box sx={{ maxWidth: 800, margin: 'auto', p: 2 }}>
         <Card sx={{ mb: 2, borderRadius: 2 }}>
           <CardContent>
@@ -230,7 +257,12 @@ s      .catch(error => {
           <Card key={question.id} sx={{ mb: 2, borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Вопрос</Typography>
+                <Box>
+                  <Typography variant="h6">Вопрос</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Тип: {questionTypes.find(t => t.value === question.type)?.label}
+                  </Typography>
+                </Box>
                 <Box>
                   <IconButton onClick={() => duplicateQuestion(question.id)}>
                     <ContentCopy />
@@ -250,7 +282,20 @@ s      .catch(error => {
               />
 
               {question.options.map((option) => (
-                <Box key={option.id} sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                <Box 
+                  key={option.id} 
+                  sx={{ 
+                    display: 'flex', 
+                    gap: 2, 
+                    mb: 1,
+                    alignItems: 'center',
+                    pl: 1
+                  }}
+                >
+                  {question.type === 'radio' && <RadioButtonUnchecked sx={{ color: 'action.active' }} />}
+                  {question.type === 'checkbox' && <CheckBoxOutlineBlank sx={{ color: 'action.active' }} />}
+                  {question.type === 'select' && <ArrowDropDown sx={{ color: 'action.active' }} />}
+
                   <TextField
                     fullWidth
                     label="Вариант ответа"
@@ -267,7 +312,12 @@ s      .catch(error => {
                     label="Шанс выбора"
                     inputProps={{ min: 0, max: 1, step: 0.1 }}
                     value={option.chance}
-                    onChange={(e) => {handleOptionChange(question.id, option.id, 'chance', Math.max(0, Math.min(1, parseFloat(e.target.value))))}}
+                    onChange={(e) => handleOptionChange(
+                      question.id, 
+                      option.id, 
+                      'chance', 
+                      Math.max(0, Math.min(1, parseFloat(e.target.value || 0)))
+                  )}
                     sx={{ width: 200 }}
                   />
                   <IconButton 
@@ -308,11 +358,11 @@ s      .catch(error => {
               Сохранить форму
             </Button>
             <Button
-                variant="outlined"
-                startIcon={<Home />}
-                onClick={() => navigate('/')}
-                >
-                На главную
+              variant="outlined"
+              startIcon={<Home />}
+              onClick={() => navigate('/')}
+            >
+              На главную
             </Button>
           </div>
           <div>
@@ -322,7 +372,7 @@ s      .catch(error => {
             <Button
               variant="outlined"
               startIcon={<Send />}
-              onClick={() => sendTryTest()}
+              onClick={() => {setTestPopapOpen(true);}}
             >
               Тест заполнения формы (1 раз без отправки)
             </Button>

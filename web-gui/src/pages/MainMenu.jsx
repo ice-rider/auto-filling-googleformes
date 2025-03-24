@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { v4 as uuid } from 'uuid';
 import { Button, Divider, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton } from "@mui/material"
 
 import "./style.css";
@@ -20,7 +22,7 @@ export default function MainMenu() {
         }
         console.log(JSON.parse(localStorage.getItem("form_id_list")));
         setIdArray(JSON.parse(localStorage.getItem("form_id_list")));
-    }, [localStorage])
+    }, [localStorage]);
     
     console.log("render: ", idArray, idArray.map((id) => { 
         return <FormButton id={id} onClick={()=>{navigate(`/form/${id}`)}} />
@@ -68,8 +70,31 @@ function FormButton({ id, onClick }) {
 }
 
 function ImportDialog({ open, onClose }) {
+    const [url, setUrl] = useState('');
     const importForm = () => {
-        onClose();
+        toast.info("Импортируется...");
+        fetch("/api/parser", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({url})
+        }).then(response => {    
+            response.json().then(data => {
+                console.log(data);
+                const formIdList = JSON.parse(localStorage.getItem('form_id_list')); 
+                const id = formIdList.length + 1;
+                formIdList.push(id);
+                localStorage.setItem(`form_${id}`, data.parsed);
+                localStorage.setItem('form_id_list', JSON.stringify(formIdList));
+                toast.success('Форма успешно импортирована');
+            }).catch(error => {
+                console.log(error);
+                toast.error("Произошла ошибка при импортировании формы");
+            }).finally(() => {
+                onClose();
+            })
+        })
     }
 
     return (
@@ -81,6 +106,8 @@ function ImportDialog({ open, onClose }) {
                         fullWidth
                         label="введите юрл формы"
                         multiline
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
                         rows={3}
                     />
                 </Box>

@@ -1,12 +1,19 @@
+from datetime import datetime
 from uuid import uuid4
 import time
-import datetime
 
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Без графического интерфейса
+chrome_options.add_argument("--disable-gpu")  # Отключение GPU (рекомендуется для headless)
+chrome_options.add_argument("--no-sandbox")  # Опционально: для обхода ограничений
 
 
 def parse_form(url):
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)
     time.sleep(2)
     try:

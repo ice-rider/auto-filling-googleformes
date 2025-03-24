@@ -87,28 +87,30 @@ class OptionItem(Item):
     def generate_answers(self):
         n = self.n
         chances = self.chance_list
-        num_checks = len(chances)
-        check_arrays = []
-
-        for chance in chances:
-            ideal = chance * n
-            count = round(ideal)
-            arr = [True] * count + [False] * (n - count)
-            random.shuffle(arr)
-            check_arrays.append(arr)
 
         answers = []
         for j in range(n):
             current = []
-            for i in range(num_checks):
-                if check_arrays[i][j]:
+            for i in range(len(chances)):
+                if random.random() <= chances[i]:
                     current.append(i)
             answers.append(current)
+
+        for index, elem in enumerate(answers):
+            if elem == list():
+                for i in range(index+1, len(answers)):
+                    if len(answers[i]) >= 2:
+                        answers[index].append(answers[i].pop())
+                        break
+
         self.answers = answers
 
     def set(self):
         numbers = self.get_ans()
+        if numbers == []:
+            numbers = [0]
         for number in numbers:
             self.driver.execute_script(f"""
+                console.log("click", window.elem.querySelectorAll('[role=checkbox]')[{number}]);
                 window.elem.querySelectorAll('[role=checkbox]')[{number}].click();
             """)
